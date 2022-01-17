@@ -25,10 +25,19 @@ uses
   uTFTP, Winsock2,
   {$endif}
   uBT, uBT_UART, uBLE,
-  Ultibo, Console
+  Ultibo, Console,
+
+  ShellFilesystem,
+  ShellUpdate,
+  RemoteShell,
+
+  HTTP,
+  WebStatus
+
   { Add additional units here };
 
 var
+  HTTPListener : THTTPListener;
   Console1, Console2, Console3 : TWindowHandle;
 {$ifdef use_tftp}
   IPAddress : string;
@@ -112,6 +121,10 @@ begin
 end;
 
 begin
+  HTTPListener:=THTTPListener.Create;
+  HTTPListener.Active:=True;
+  WebStatusRegister(HTTPListener,'','',True);
+
   Console1 := ConsoleWindowCreate (ConsoleDeviceGetDefault, CONSOLE_POSITION_LEFT, true);
   Console2 := ConsoleWindowCreate (ConsoleDeviceGetDefault, CONSOLE_POSITION_TOPRIGHT, false);
   Console3 := ConsoleWindowCreate (ConsoleDeviceGetDefault, CONSOLE_POSITION_BOTTOMRIGHT, false);
