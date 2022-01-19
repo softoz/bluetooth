@@ -133,6 +133,8 @@ begin
   Log ('BT (UART) Tester.');
   Log ('');
 
+  WaitForSDDrive;
+
 {$ifdef use_tftp}
   IPAddress := WaitForIPComplete;
   Log2 ('TFTP : Usage tftp -i ' + IPAddress + ' put kernel7.img');

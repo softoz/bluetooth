@@ -106,6 +106,8 @@ begin
 
   Log ('BT (USB) Tester.');
   Log ('');
+  
+  WaitForSDDrive;
 
 {$ifdef use_tftp}
   IPAddress := WaitForIPComplete;
