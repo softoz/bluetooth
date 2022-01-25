@@ -5,7 +5,23 @@ unit uBT_UART;
 interface
 
 uses
-  Classes, SysUtils, Serial, BCM2710, Devices, GlobalConst, GlobalTypes, Threads, uBT;
+  Classes,
+  SysUtils,
+  Serial,
+  {$IFDEF RPI}
+  BCM2708,
+  {$ENDIF}
+  {$IFDEF RPI3}
+  BCM2710,
+  {$ENDIF}
+  {$IFDEF RPI4}
+  BCM2711,
+  {$ENDIF}
+  Devices,
+  GlobalConst,
+  GlobalTypes,
+  Threads,
+  uBT;
 (*
 
 Connection to BCM4343 chip
@@ -250,12 +266,15 @@ begin
   case BoardType of
     BOARD_TYPE_RPI3B,
     BOARD_TYPE_RPI_ZERO_W: FileName := 'BCM43430A1.hcd';
+
     BOARD_TYPE_RPI3B_PLUS,
     BOARD_TYPE_RPI3A_PLUS: FileName := 'BCM4345C0.hcd';
-    //BOARD_TYPE_RPI4B
-    //BOARD_TYPE_RPI400
-    //BOARD_TYPE_RPI_COMPUTE4
-    //BOARD_TYPE_RPI_ZERO2_W
+
+    BOARD_TYPE_RPI4B,
+    BOARD_TYPE_RPI_COMPUTE4,
+    BOARD_TYPE_RPI400: FileName := 'BCM4345C5.hcd';
+
+    BOARD_TYPE_RPI_ZERO2_W: FileName := 'BCM43430B0.hcd';
   end;
 
   BT := PBT_UARTDevice (BTDeviceCreateEx (SizeOf (TBT_UARTDevice)));
@@ -274,7 +293,7 @@ begin
       exit;
     end;
   if BTDeviceSetState (@BT.BT, BT_STATE_ATTACHED) <> ERROR_SUCCESS then exit;
-  BT.UARTName := BCM2710_UART0_DESCRIPTION;
+  BT.UARTName := UARTGetDescription(0);
   BTOpenPort (BT);
 
   BTLoadFirmware (@BT.BT, FileName);
@@ -283,7 +302,8 @@ end;
 
 function BTOpenPort (BT : PBT_UARTDevice) : LongWord;
 var
-  res : LongWord;
+  b : byte;
+  c, res : LongWord;
   BoardType: LongWord;
   FlowControl: LongWord;
 begin
@@ -295,13 +315,16 @@ begin
   BoardType := BoardGetType;
   FlowControl := SERIAL_FLOW_NONE;
   case BoardType of
-    BOARD_TYPE_RPI_ZERO_W,
+    BOARD_TYPE_RPI_ZERO_W: FlowControl := SERIAL_FLOW_RTS_CTS;
+
     BOARD_TYPE_RPI3B_PLUS,
     BOARD_TYPE_RPI3A_PLUS: FlowControl := SERIAL_FLOW_RTS_CTS;
-    //BOARD_TYPE_RPI4B
-    //BOARD_TYPE_RPI400
-    //BOARD_TYPE_RPI_COMPUTE4
-    //BOARD_TYPE_RPI_ZERO2_W
+
+    BOARD_TYPE_RPI4B,
+    BOARD_TYPE_RPI400,
+    BOARD_TYPE_RPI_COMPUTE4: FlowControl := SERIAL_FLOW_RTS_CTS;
+
+    BOARD_TYPE_RPI_ZERO2_W: FlowControl := SERIAL_FLOW_RTS_CTS;
   end;
 
   //Log ('UART Found OK.');
@@ -309,7 +332,7 @@ begin
   if res = ERROR_SUCCESS then
     begin
       Log ('UART Opened OK.');
-      if BT.UARTName = BCM2710_UART0_DESCRIPTION then // main uart
+      if BT.UARTName = UARTGetDescription(0) then // main uart
         begin
           // redirect serial lines to bluetooth device
           GPIOFunctionSelect (GPIO_PIN_14, GPIO_FUNCTION_IN);
@@ -331,6 +354,10 @@ begin
             GPIOPullSelect(GPIO_PIN_31,GPIO_PULL_NONE);
           end;
         end;
+
+      // empty the uart
+      while (SerialDeviceRead (BT.UART, @b, 1, SERIAL_READ_NON_BLOCK, c) = ERROR_SUCCESS) do
+        log('Drained byte ' +b.tostring + ' from uart');
 
       BT.ReadHandle := BeginThread (@BTReadExecute, BT, BT.ReadHandle, THREAD_STACK_DEFAULT_SIZE);
       if BT.ReadHandle = INVALID_HANDLE_VALUE then exit;

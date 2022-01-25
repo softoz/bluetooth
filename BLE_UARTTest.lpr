@@ -11,7 +11,15 @@ program BLE_UARTTest;
 {$define use_tftp}
 
 uses
+  {$IFDEF RPI}
+  RaspberryPi,
+  {$ENDIF}
+  {$IFDEF RPI3}
   RaspberryPi3,
+  {$ENDIF}
+  {$IFDEF RPI4}
+  RaspberryPi4,
+  {$ENDIF}
   GlobalConfig,
   GlobalConst,
   GlobalTypes,
@@ -41,6 +49,7 @@ var
   Console1, Console2, Console3 : TWindowHandle;
 {$ifdef use_tftp}
   IPAddress : string;
+  BoardType: LongWord;
 {$endif}
   ch : char;
   s : string;
@@ -136,10 +145,24 @@ begin
   WaitForSDDrive;
 
 {$ifdef use_tftp}
-  IPAddress := WaitForIPComplete;
-  Log2 ('TFTP : Usage tftp -i ' + IPAddress + ' put kernel7.img');
-  SetOnMsg (@Msg2);
-  Log2 ('');
+  BoardType := BoardGetType;
+  case BoardType of
+    BOARD_TYPE_RPIA,
+    BOARD_TYPE_RPIA_PLUS,
+    BOARD_TYPE_RPI_ZERO,
+    BOARD_TYPE_RPI_ZERO_W,
+    BOARD_TYPE_RPI3A_PLUS,
+    BOARD_TYPE_RPI_ZERO2_W: begin
+       //Nothing
+    end;
+    else
+    begin
+      IPAddress := WaitForIPComplete;
+      Log2 ('TFTP : Usage tftp -i ' + IPAddress + ' put kernel7.img');
+      SetOnMsg (@Msg2);
+      Log2 ('');
+    end;
+  end;
 {$endif}
   BTInit;
   BT_UARTInit;
